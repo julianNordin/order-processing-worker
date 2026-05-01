@@ -57,7 +57,7 @@ Not yet — the build is in progress. See the roadmap below.
 
 ## Roadmap
 
-- [ ] 01 — Repo skeleton, tooling, ground rules
+- [x] 01 — Repo skeleton, tooling, ground rules
 - [ ] 02 — Solution skeleton and the project boundaries
 - [ ] 03 — Message contracts and the versioning rule
 - [ ] 04 — RabbitMQ in Compose, and the topology in code
