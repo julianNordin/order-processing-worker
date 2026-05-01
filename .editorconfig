@@ -1,0 +1,43 @@
+# Shared editor and analyser settings. Committed so that formatting is a property of the repository
+# rather than of whichever editor happens to open it.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,csproj,props,targets,sln}]
+indent_size = 2
+
+[*.md]
+# Markdown gives two trailing spaces a meaning, so trimming them would silently change rendering.
+trim_trailing_whitespace = false
+
+[*.cs]
+# Language conventions.
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_prefer_braces = true:warning
+csharp_style_prefer_primary_constructors = true:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+
+# Naming: private fields are _camelCase, everything public is PascalCase.
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# Unused usings and unused parameters are errors, not suggestions. They are trivially fixable and
+# they accumulate.
+dotnet_diagnostic.IDE0005.severity = error
+dotnet_diagnostic.RCS1163.severity = none

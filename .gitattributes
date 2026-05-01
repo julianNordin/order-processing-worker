@@ -1,0 +1,14 @@
+# Normalise to LF in the repository and let git hand the working tree whatever the platform wants.
+# Without this a Windows clone commits CRLF, a Linux CI job sees every line as changed, and diffs
+# stop being readable.
+* text=auto eol=lf
+
+# Windows-only scripts are the exception: PowerShell is happy with LF, but a .cmd or .bat file with
+# LF endings can fail in ways that are hard to read, so those keep CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary, so git must never try to normalise or diff it as text.
+*.pdf binary
+*.png binary
+*.ico binary
