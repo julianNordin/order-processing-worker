@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Settings every project in the solution inherits. Keeping them here rather than repeating them in
+    five .csproj files means a change is made once and cannot drift between projects.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Warnings are errors. A warning nobody has to fix is a warning everybody scrolls past, and the
+      ones this project cares about - unused usings, nullability holes, NuGet audit findings - are
+      exactly the ones that are cheap to fix on the day they appear and expensive later.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Audit every restore against the advisory database. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
+
+</Project>

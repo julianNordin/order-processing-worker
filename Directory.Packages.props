@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Central package management. Every version this solution uses is declared here exactly once, and
+    the .csproj files reference packages without a version at all.
+
+    This exists to make one rule enforceable: versions are pinned exactly, never as a floating range.
+    A caret or wildcard range resolves to whatever is newest on the machine doing the restore, which
+    means two developers - or a developer and CI - can build materially different binaries from the
+    same commit.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Filled in by the phase that first needs each package. -->
+  </ItemGroup>
+
+</Project>
