@@ -15,7 +15,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Filled in by the phase that first needs each package. -->
+    <!-- Test tier. -->
+    <PackageVersion Include="coverlet.collector" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
 
 </Project>

@@ -6,4 +6,8 @@
     <Project Path="src/OrderProcessing.Persistence/OrderProcessing.Persistence.csproj" />
     <Project Path="src/OrderProcessing.Worker/OrderProcessing.Worker.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OrderProcessing.IntegrationTests/OrderProcessing.IntegrationTests.csproj" />
+    <Project Path="tests/OrderProcessing.UnitTests/OrderProcessing.UnitTests.csproj" />
+  </Folder>
 </Solution>

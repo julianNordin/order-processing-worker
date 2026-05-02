@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    Chain to the root Directory.Build.props first - MSBuild stops at the nearest one it finds, so
+    without this import the test projects would silently lose every shared setting.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove($(MSBuildThisFileName)$(MSBuildThisFileExtension), $(MSBuildThisFileDirectory)../))" />
+
+  <PropertyGroup>
+    <!--
+      CA1707 objects to underscores in member names. That rule is right for production code and
+      wrong for tests, where the method name is the sentence the runner prints when it fails:
+      "The_two_services_do_not_reference_each_other" says more in a failure report than any
+      PascalCase rendering of it would. Scoped to tests/ so production code keeps the rule.
+    -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+
+    <!-- Nothing here ships, so there is no public API to document. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>
