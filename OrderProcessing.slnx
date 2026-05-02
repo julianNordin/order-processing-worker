@@ -1,2 +1,9 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OrderProcessing.Api/OrderProcessing.Api.csproj" />
+    <Project Path="src/OrderProcessing.Contracts/OrderProcessing.Contracts.csproj" />
+    <Project Path="src/OrderProcessing.Messaging/OrderProcessing.Messaging.csproj" />
+    <Project Path="src/OrderProcessing.Persistence/OrderProcessing.Persistence.csproj" />
+    <Project Path="src/OrderProcessing.Worker/OrderProcessing.Worker.csproj" />
+  </Folder>
 </Solution>

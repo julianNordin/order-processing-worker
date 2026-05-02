@@ -20,6 +20,15 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
 
     <!-- Audit every restore against the advisory database. -->
+    <!--
+      IDE0005 (unused usings) only runs during a build when the compiler is also producing the
+      documentation file - a long-standing Roslyn limitation. Turning the doc file on brings CS1591
+      ("missing XML comment") with it, which would demand a doc comment on every public member, so
+      that one warning is suppressed and no others are.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditLevel>low</NuGetAuditLevel>
   </PropertyGroup>

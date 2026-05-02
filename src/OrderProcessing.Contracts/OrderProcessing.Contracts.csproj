@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    This project deliberately has no package references and no project references at all. It holds
+    the message contracts, which are the one thing the publisher and the consumer must agree on. If
+    it ever needs a dependency, that dependency has become part of the contract too.
+  -->
+</Project>
