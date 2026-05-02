@@ -58,7 +58,7 @@ Not yet — the build is in progress. See the roadmap below.
 ## Roadmap
 
 - [x] 01 — Repo skeleton, tooling, ground rules
-- [ ] 02 — Solution skeleton and the project boundaries
+- [x] 02 — Solution skeleton and the project boundaries
 - [ ] 03 — Message contracts and the versioning rule
 - [ ] 04 — RabbitMQ in Compose, and the topology in code
 - [ ] 05 — Postgres, EF Core and the order model
