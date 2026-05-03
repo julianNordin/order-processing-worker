@@ -59,7 +59,7 @@ Not yet — the build is in progress. See the roadmap below.
 
 - [x] 01 — Repo skeleton, tooling, ground rules
 - [x] 02 — Solution skeleton and the project boundaries
-- [ ] 03 — Message contracts and the versioning rule
+- [x] 03 — Message contracts and the versioning rule
 - [ ] 04 — RabbitMQ in Compose, and the topology in code
 - [ ] 05 — Postgres, EF Core and the order model
 - [ ] 06 — The API: accept an order, answer 202
