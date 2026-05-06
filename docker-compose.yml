@@ -1,0 +1,37 @@
+# The local stack. One definition, used identically by a developer on their own machine and by CI,
+# because the moment those two diverge "works on my machine" becomes possible again.
+#
+# Services are added to this file by the phase that first needs them: the broker here in Phase 04,
+# Postgres in Phase 05, and the API and worker themselves in Phase 15.
+
+name: orderprocessing
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.2.6-management
+    container_name: orderprocessing-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?set RABBITMQ_USER in .env - copy .env.example}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env - copy .env.example}
+      # Without this the broker refuses to start once the disk drops below 50MB free, which on a
+      # developer machine reads as an unexplained connection failure. 1GB is a threshold that means
+      # something.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit disk_free_limit 1073741824"
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI - http://localhost:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      # Two checks, because they fail differently. check_running says the Erlang application is up;
+      # check_port_connectivity says it is actually accepting AMQP connections. Waiting only on
+      # "container running" is the classic way to get a connection refused that looks like a bug in
+      # your own code.
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  rabbitmq-data:
