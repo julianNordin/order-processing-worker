@@ -41,3 +41,12 @@ dotnet_naming_style.underscore_camel.capitalization = camel_case
 # they accumulate.
 dotnet_diagnostic.IDE0005.severity = error
 dotnet_diagnostic.RCS1163.severity = none
+
+# EF Core writes everything under Migrations/. It is generated code: reformatting it to match the
+# hand-written style rules is work the next `dotnet ef migrations add` silently undoes, and a
+# migration that has been hand-edited is a migration nobody trusts. Marking it generated is what
+# tells the analysers to leave it alone.
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.IDE0161.severity = none
