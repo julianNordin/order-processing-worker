@@ -33,5 +33,31 @@ services:
       retries: 12
       start_period: 30s
 
+  postgres:
+    image: postgres:18-alpine
+    container_name: orderprocessing-postgres
+    environment:
+      POSTGRES_DB: orderprocessing
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env - copy .env.example}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env - copy .env.example}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18 changed where the data directory should be mounted. Mounting at
+      # /var/lib/postgresql/data - correct for 17 and earlier - makes the 18 image refuse to start,
+      # because it wants to own the parent directory so that a future pg_upgrade --link can work
+      # across the mount boundary. The container exits 1 with an explanation that is easy to miss.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # pg_isready is the only honest readiness signal here. The container reports "running" a
+      # second or two before the server accepts connections, and that gap is long enough for a
+      # service started alongside it to fail its first query and die.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d orderprocessing"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
 volumes:
   rabbitmq-data:
+  postgres-data:
