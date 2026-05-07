@@ -21,6 +21,22 @@
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
 
+    <!-- Persistence. -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
+
+    <!--
+      Pinned transitively, not because anything references them directly, but because
+      EFCore.NamingConventions 10.0.1 depends on EF Core 10.0.4 while Npgsql and the design-time
+      tooling want 10.0.7. Left alone, MSBuild resolves the OLDER one ("chosen because it was
+      primary") and the app runs against an EF Core the provider was not built against. Central
+      transitive pinning turns that silent downgrade into one declared version.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
+
     <!-- Test tier. -->
     <PackageVersion Include="coverlet.collector" Version="10.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
