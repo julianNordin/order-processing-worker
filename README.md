@@ -61,7 +61,7 @@ Not yet — the build is in progress. See the roadmap below.
 - [x] 02 — Solution skeleton and the project boundaries
 - [x] 03 — Message contracts and the versioning rule
 - [x] 04 — RabbitMQ in Compose, and the topology in code
-- [ ] 05 — Postgres, EF Core and the order model
+- [x] 05 — Postgres, EF Core and the order model
 - [ ] 06 — The API: accept an order, answer 202
 - [ ] 07 — The transactional outbox
 - [ ] 08 — The worker: consume, render the receipt
