@@ -96,7 +96,7 @@ dotnet test
 - [x] 03 — Message contracts and the versioning rule
 - [x] 04 — RabbitMQ in Compose, and the topology in code
 - [x] 05 — Postgres, EF Core and the order model
-- [ ] 06 — The API: accept an order, answer 202
+- [x] 06 — The API: accept an order, answer 202
 - [ ] 07 — The transactional outbox
 - [ ] 08 — The worker: consume, render the receipt
 - [ ] 09 — Serilog: structured logging and correlation
