@@ -53,7 +53,41 @@ dead-lettering are things this code does explicitly, not things a library hides.
 
 ## Running it
 
-Not yet — the build is in progress. See the roadmap below.
+Requires Docker and the .NET 10 SDK. The whole stack moves into Compose in Phase 15; until then the
+broker and database run in containers and the services run on the host.
+
+```bash
+cp .env.example .env
+docker compose up -d                 # rabbitmq + postgres, ~10s to healthy
+
+# Credentials come from the environment and are never committed.
+export ConnectionStrings__OrderProcessing="Host=localhost;Port=5432;Database=orderprocessing;Username=orderprocessing;Password=local-development-only"
+export RabbitMq__UserName=orderprocessing
+export RabbitMq__Password=local-development-only
+
+dotnet tool restore                  # pinned dotnet-ef
+dotnet dotnet-ef database update --project src/OrderProcessing.Persistence
+dotnet run --project src/OrderProcessing.Api      # http://127.0.0.1:8080
+```
+
+Place an order:
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/api/orders   -H 'content-type: application/json'   -d '{"customerEmail":"buyer@example.com",
+       "lines":[{"sku":"SKU-1","description":"Blue widget","quantity":3,"unitPrice":13.99}]}'
+```
+
+It answers `202 Accepted` with a `Location` header, **not** `201`. The order has been recorded; the
+receipt has not been generated yet, and saying `201` would claim otherwise. Follow the `Location` to
+watch the status change.
+
+The broker's management UI is at `http://localhost:15672` with the credentials from `.env`.
+
+## Tests
+
+```bash
+dotnet test
+```
 
 ## Roadmap
 
