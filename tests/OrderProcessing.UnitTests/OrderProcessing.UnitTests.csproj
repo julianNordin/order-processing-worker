@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\OrderProcessing.Contracts\OrderProcessing.Contracts.csproj" />
     <ProjectReference Include="..\..\src\OrderProcessing.Persistence\OrderProcessing.Persistence.csproj" />
     <ProjectReference Include="..\..\src\OrderProcessing.Messaging\OrderProcessing.Messaging.csproj" />
+    <ProjectReference Include="..\..\src\OrderProcessing.Api\OrderProcessing.Api.csproj" />
   </ItemGroup>
 
 </Project>
