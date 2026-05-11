@@ -48,6 +48,36 @@ intentional. It runs a `BackgroundService` as its actual job, but it also needs 
 correctly in Compose, cannot be probed by a scheduler, and cannot tell you whether it is stuck or
 merely idle — and "stuck or idle?" is the question you ask most often about a queue consumer.
 
+## The outbox, and the dual write it removes
+
+The API never publishes to the broker inside a request. It writes two rows — the order and an
+`outbox_messages` row — in one `SaveChangesAsync`, and a background publisher moves that row to the
+broker afterwards.
+
+The alternative, "save the order then publish it", contains a problem no amount of error handling
+fixes. They are two independent operations against two independent systems, and the process can die
+between them:
+
+| What happens | Result |
+|---|---|
+| Save succeeds, publish fails | The order exists and nobody will ever process it |
+| Publish succeeds, save fails | The worker processes an order that does not exist |
+| Process dies between the two | Either of the above, with no log line saying which |
+
+A `try`/`catch` cannot help, because the failure mode is the process ceasing to exist between two
+statements. Wrapping them in a database transaction cannot help either, because a publish is not
+transactional and cannot be rolled back.
+
+Writing the message as a row makes it part of the same commit as the order: either both exist or
+neither does. **Verified rather than asserted** — with the broker stopped entirely, three orders were
+placed, all answered `202`, all three rows sat unpublished in the database, and all three drained
+within three seconds of the broker returning.
+
+The price is duplicates. The publisher marks a row sent only after the broker confirms, but it can
+die between the confirm and the commit, and the row is then republished. That is a deliberate trade:
+losing a message is unacceptable, sending one twice is inconvenient. It is also the reason the
+consumer must be idempotent, which is Phase 12.
+
 ## What is not here yet
 
 The message flow, the retry topology and the dead-letter path arrive in later phases and are
