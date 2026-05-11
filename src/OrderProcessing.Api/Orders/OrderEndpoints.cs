@@ -1,7 +1,13 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using OrderProcessing.Api.Outbox;
 using OrderProcessing.Persistence;
 using OrderProcessing.Persistence.Entities;
+
+// Two types are legitimately called OrderLine: the wire contract and the stored entity. Keeping
+// both names is the right call - they are genuinely different things with different rules about
+// changing - so every use in this file says which one it means.
+using EntityLine = OrderProcessing.Persistence.Entities.OrderLine;
 
 namespace OrderProcessing.Api.Orders;
 
@@ -37,8 +43,14 @@ public static class OrderEndpoints
         PlaceOrderRequest request,
         OrderProcessingDbContext database,
         TimeProvider clock,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
+        // One id follows this order all the way through: into the message header, into the worker's
+        // logs, and back out again. Reusing the trace id means it also lines up with the API's own
+        // request log without inventing a second identifier for the same thing.
+        var correlationId = httpContext.TraceIdentifier;
+
         if (!OrderRequestValidator.IsValid(request, out var errors))
         {
             return TypedResults.ValidationProblem(errors);
@@ -61,7 +73,7 @@ public static class OrderEndpoints
 
         foreach (var line in request.Lines)
         {
-            order.Lines.Add(new OrderLine
+            order.Lines.Add(new EntityLine
             {
                 OrderId = order.Id,
                 Sku = line.Sku,
@@ -72,12 +84,20 @@ public static class OrderEndpoints
         }
 
         database.Orders.Add(order);
+
+        // The message goes in as a row, in this same SaveChangesAsync, and that single fact is what
+        // removes the dual write. There is no moment at which the order exists and the message does
+        // not, or the other way round - one transaction, both or neither. Publishing to the broker
+        // from inside a request handler could not give that guarantee no matter how it was wrapped.
+        database.OutboxMessages.Add(OrderPlacedOutboxFactory.For(order, correlationId, clock.GetUtcNow()));
+
         await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return TypedResults.Accepted(
             $"/api/orders/{order.Id}",
             new OrderAcceptedResponse(order.Id, order.Status.ToString()));
     }
+
 
     private static async Task<Results<Ok<OrderResponse>, ProblemHttpResult>> GetOrderAsync(
         Guid id,
