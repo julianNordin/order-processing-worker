@@ -97,7 +97,7 @@ dotnet test
 - [x] 04 — RabbitMQ in Compose, and the topology in code
 - [x] 05 — Postgres, EF Core and the order model
 - [x] 06 — The API: accept an order, answer 202
-- [ ] 07 — The transactional outbox
+- [x] 07 — The transactional outbox
 - [ ] 08 — The worker: consume, render the receipt
 - [ ] 09 — Serilog: structured logging and correlation
 - [ ] 10 — Retry with exponential backoff
