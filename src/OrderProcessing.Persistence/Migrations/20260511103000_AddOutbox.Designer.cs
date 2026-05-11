@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderProcessing.Persistence;
@@ -11,9 +12,11 @@ using OrderProcessing.Persistence;
 namespace OrderProcessing.Persistence.Migrations
 {
     [DbContext(typeof(OrderProcessingDbContext))]
-    partial class OrderProcessingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260511103000_AddOutbox")]
+    partial class AddOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

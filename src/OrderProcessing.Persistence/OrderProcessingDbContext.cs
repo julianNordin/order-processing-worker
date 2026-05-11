@@ -18,6 +18,8 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
 
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
 
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -51,6 +53,33 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
             // The API lists recent orders and the worker looks orders up by state. Both want this.
             order.HasIndex(o => o.Status);
             order.HasIndex(o => o.PlacedAt);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(outbox =>
+        {
+            outbox.HasKey(o => o.Id);
+            outbox.Property(o => o.Id).UseIdentityByDefaultColumn();
+
+            // Unique, so a bug that tries to enqueue the same message twice fails at the database
+            // rather than producing two deliveries the consumer then has to deduplicate.
+            outbox.HasIndex(o => o.MessageId).IsUnique();
+
+            outbox.Property(o => o.CorrelationId).HasMaxLength(64).IsRequired();
+            outbox.Property(o => o.MessageType).HasMaxLength(128).IsRequired();
+            outbox.Property(o => o.Exchange).HasMaxLength(128).IsRequired();
+            outbox.Property(o => o.RoutingKey).HasMaxLength(128).IsRequired();
+
+            // jsonb rather than text: it is queryable when diagnosing a stuck row, and Postgres
+            // validates it on the way in, so a malformed payload cannot be enqueued at all.
+            outbox.Property(o => o.Payload).HasColumnType("jsonb").IsRequired();
+
+            outbox.Property(o => o.LastError).HasMaxLength(2000);
+
+            // The publisher's only query is "unpublished rows, oldest first". A filtered index means
+            // it never scans the rows already sent, which is eventually the whole table.
+            outbox.HasIndex(o => o.Id)
+                .HasDatabaseName("ix_outbox_messages_unpublished")
+                .HasFilter("published_at IS NULL");
         });
 
         modelBuilder.Entity<OrderLine>(line =>
