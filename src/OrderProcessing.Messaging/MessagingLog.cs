@@ -28,6 +28,14 @@ internal static partial class MessagingLog
         Message = "Giving up connecting to RabbitMQ at {Host}:{Port} after {Attempt} attempts")]
     public static partial void ConnectionGaveUp(ILogger logger, Exception exception, string host, int port, int attempt);
 
+    [LoggerMessage(EventId = 1011, Level = LogLevel.Warning,
+        Message = "Could not declare the topology; retrying. Publishes will be unroutable until this succeeds")]
+    public static partial void TopologyDeclarationFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 1020, Level = LogLevel.Error,
+        Message = "Broker could not route message {MessageId} to any queue: exchange {Exchange}, routing key {RoutingKey}")]
+    public static partial void MessageNotRouted(ILogger logger, string exchange, string routingKey, Guid messageId);
+
     [LoggerMessage(EventId = 1010, Level = LogLevel.Information,
         Message = "Topology declared: {ExchangeCount} exchanges, {QueueCount} queues")]
     public static partial void TopologyDeclared(ILogger logger, int exchangeCount, int queueCount);

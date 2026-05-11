@@ -20,6 +20,7 @@ public static class MessagingServiceCollectionExtensions
 
         services.AddSingleton<IRabbitMqConnection, RabbitMqConnection>();
         services.AddSingleton<TopologyDeclarer>();
+        services.AddSingleton<IMessagePublisher, RabbitMqMessagePublisher>();
         services.AddHostedService<TopologyDeclarationHostedService>();
 
         return services;
