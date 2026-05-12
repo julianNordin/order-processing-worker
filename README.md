@@ -81,6 +81,24 @@ It answers `202 Accepted` with a `Location` header, **not** `201`. The order has
 receipt has not been generated yet, and saying `201` would claim otherwise. Follow the `Location` to
 watch the status change.
 
+Run the worker too, in another shell, and the order completes:
+
+```bash
+dotnet run --project src/OrderProcessing.Worker    # http://127.0.0.1:8081
+```
+
+Then the whole pipeline in one command:
+
+```bash
+pwsh -File scripts/smoke.ps1
+# Placing an order...
+#   accepted as 01a05210-... (status Accepted)
+# Waiting for the worker...
+#   completed
+# Downloading the receipt...
+#   ...orderprocessing-receipt.pdf  (76851 bytes, %PDF)
+```
+
 The broker's management UI is at `http://localhost:15672` with the credentials from `.env`.
 
 ## Tests
@@ -98,7 +116,7 @@ dotnet test
 - [x] 05 — Postgres, EF Core and the order model
 - [x] 06 — The API: accept an order, answer 202
 - [x] 07 — The transactional outbox
-- [ ] 08 — The worker: consume, render the receipt
+- [x] 08 — The worker: consume, render the receipt
 - [ ] 09 — Serilog: structured logging and correlation
 - [ ] 10 — Retry with exponential backoff
 - [ ] 11 — Dead-lettering, poison messages, and the parked queue
