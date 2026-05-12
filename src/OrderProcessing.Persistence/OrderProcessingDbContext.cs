@@ -20,6 +20,8 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
+    public DbSet<Receipt> Receipts => Set<Receipt>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -53,6 +55,23 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
             // The API lists recent orders and the worker looks orders up by state. Both want this.
             order.HasIndex(o => o.Status);
             order.HasIndex(o => o.PlacedAt);
+        });
+
+        modelBuilder.Entity<Receipt>(receipt =>
+        {
+            // The order id IS the key. One receipt per order is a rule worth enforcing in the
+            // schema rather than in code: a duplicate delivery that got past the idempotency check
+            // would otherwise quietly produce a second receipt instead of failing loudly.
+            receipt.HasKey(r => r.OrderId);
+            receipt.Property(r => r.OrderId).ValueGeneratedNever();
+
+            receipt.Property(r => r.ContentType).HasMaxLength(100).IsRequired();
+            receipt.Property(r => r.Content).IsRequired();
+
+            receipt.HasOne<Order>()
+                .WithOne()
+                .HasForeignKey<Receipt>(r => r.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OutboxMessage>(outbox =>
