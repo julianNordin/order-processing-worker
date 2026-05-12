@@ -5,4 +5,18 @@
     <ProjectReference Include="..\OrderProcessing.Persistence\OrderProcessing.Persistence.csproj" />
     <ProjectReference Include="..\OrderProcessing.Messaging\OrderProcessing.Messaging.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="QuestPDF" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The renderer and the consumer are implementation details, not API, and they stay internal. This
+      lets the test project see them without widening the public surface - the alternative, making a
+      type public purely so a test can reach it, turns "what this assembly offers" into "what the
+      tests happened to need".
+    -->
+    <InternalsVisibleTo Include="OrderProcessing.UnitTests" />
+  </ItemGroup>
 </Project>
