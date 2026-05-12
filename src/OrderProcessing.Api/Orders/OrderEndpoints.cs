@@ -27,6 +27,10 @@ public static class OrderEndpoints
             .WithName("GetOrder")
             .WithSummary("Reports where an order has got to.");
 
+        group.MapGet("/{id:guid}/receipt", GetReceiptAsync)
+            .WithName("GetReceipt")
+            .WithSummary("Downloads the generated receipt, once the worker has produced it.");
+
         return group;
     }
 
@@ -98,6 +102,40 @@ public static class OrderEndpoints
             new OrderAcceptedResponse(order.Id, order.Status.ToString()));
     }
 
+
+    /// <summary>
+    /// Streams the receipt PDF back, or explains that it does not exist yet.
+    ///
+    /// The 404 deliberately distinguishes "no such order" from "not generated yet". They look the
+    /// same over HTTP and mean completely different things to a caller: one is a mistake, the other
+    /// is "ask again shortly".
+    /// </summary>
+    private static async Task<Results<FileContentHttpResult, ProblemHttpResult>> GetReceiptAsync(
+        Guid id,
+        OrderProcessingDbContext database,
+        CancellationToken cancellationToken)
+    {
+        var receipt = await database.Receipts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.OrderId == id, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (receipt is not null)
+        {
+            return TypedResults.File(receipt.Content, receipt.ContentType, $"receipt-{id}.pdf");
+        }
+
+        var orderExists = await database.Orders
+            .AnyAsync(o => o.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+
+        return TypedResults.Problem(
+            title: orderExists ? "Receipt not ready" : "Order not found",
+            detail: orderExists
+                ? $"Order {id} has been accepted but its receipt has not been generated yet."
+                : $"No order with id {id}.",
+            statusCode: StatusCodes.Status404NotFound);
+    }
 
     private static async Task<Results<Ok<OrderResponse>, ProblemHttpResult>> GetOrderAsync(
         Guid id,
