@@ -5,4 +5,12 @@
     <ProjectReference Include="..\OrderProcessing.Persistence\OrderProcessing.Persistence.csproj" />
     <ProjectReference Include="..\OrderProcessing.Messaging\OrderProcessing.Messaging.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Formatting.Compact" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Settings.Configuration" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+  </ItemGroup>
 </Project>

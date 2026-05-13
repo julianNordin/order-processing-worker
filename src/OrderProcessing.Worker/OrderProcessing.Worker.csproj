@@ -19,4 +19,12 @@
     -->
     <InternalsVisibleTo Include="OrderProcessing.UnitTests" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Formatting.Compact" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Settings.Configuration" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+  </ItemGroup>
 </Project>
