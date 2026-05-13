@@ -101,6 +101,33 @@ pwsh -File scripts/smoke.ps1
 
 The broker's management UI is at `http://localhost:15672` with the credentials from `.env`.
 
+## Following one order through both services
+
+Every log line carries a correlation id. It is created by the API when the order is accepted, stored
+on the outbox row, travels as an AMQP property, and is pushed into the worker's log context when the
+message is consumed — so one query returns the whole story rather than two disconnected halves:
+
+```
+correlation id : 0HNO6FH85RNKF:00000001
+message id     : 01a05215-3358-7c9e-a137-6cc65f174870
+
+  09:51:56.401  Api     HTTP POST /api/orders responded 202 in 41.2 ms
+  09:51:57.223  Api     Published outbox message 01a05215-3358-7c9e-a137-6cc65f174870
+  09:51:58.758  Worker  Generated receipt for order 01a05215-32fb-7ece-8c50-e1ad02b16527 (73923 bytes)
+```
+
+Three hops, two processes, one id. `MessageId`, `OrderId` and `Redelivered` are attached the same
+way, so "show me every delivery of this message" is also one query.
+
+In Development the console is a readable template meant for a human at a terminal. Anywhere else it
+is one JSON object per line on stdout, which is the only thing a container runtime collects and the
+only format a log aggregator can index per-property rather than by regex.
+
+Every log call goes through a source-generated `[LoggerMessage]` method rather than
+`logger.LogInformation(...)`. The generated code checks whether the level is enabled before touching
+its arguments, so a filtered-out message on the consume loop costs no boxing, no formatting and no
+allocation.
+
 ## Tests
 
 ```bash
@@ -117,7 +144,7 @@ dotnet test
 - [x] 06 — The API: accept an order, answer 202
 - [x] 07 — The transactional outbox
 - [x] 08 — The worker: consume, render the receipt
-- [ ] 09 — Serilog: structured logging and correlation
+- [x] 09 — Serilog: structured logging and correlation
 - [ ] 10 — Retry with exponential backoff
 - [ ] 11 — Dead-lettering, poison messages, and the parked queue
 - [ ] 12 — Idempotency: exactly-once effects on at-least-once delivery
