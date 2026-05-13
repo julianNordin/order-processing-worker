@@ -5,6 +5,7 @@ using OrderProcessing.Contracts;
 using OrderProcessing.Persistence;
 using OrderProcessing.Persistence.Entities;
 using OrderProcessing.Worker.Receipts;
+using Serilog.Context;
 
 namespace OrderProcessing.Worker.Consuming;
 
@@ -45,6 +46,9 @@ internal sealed class OrderPlacedHandler(
     public async Task HandleAsync(ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
     {
         var message = Deserialize(body);
+
+        // Known only after deserializing, so it is pushed here rather than in the consumer.
+        using var orderScope = LogContext.PushProperty("OrderId", message.OrderId);
 
         if (message.SchemaVersion > MessageContracts.CurrentSchemaVersion)
         {

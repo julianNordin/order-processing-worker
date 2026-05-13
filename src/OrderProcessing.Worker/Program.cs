@@ -1,4 +1,5 @@
 using OrderProcessing.Messaging;
+using OrderProcessing.Messaging.Logging;
 using OrderProcessing.Persistence;
 using OrderProcessing.Worker.Consuming;
 using OrderProcessing.Worker.Receipts;
@@ -10,6 +11,8 @@ using QuestPDF.Infrastructure;
 QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddStructuredLogging("OrderProcessing.Worker");
 
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);

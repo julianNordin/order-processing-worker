@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using OrderProcessing.Messaging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Serilog.Context;
 
 namespace OrderProcessing.Worker.Consuming;
 
@@ -101,6 +102,16 @@ internal sealed class OrderConsumer(
         }
 
         var messageId = delivery.BasicProperties.MessageId ?? "(none)";
+        var correlationId = delivery.BasicProperties.CorrelationId ?? "(none)";
+
+        // Everything logged for the rest of this delivery carries these, including anything the
+        // handler logs and anything an exception is reported with. The correlation id came from the
+        // HTTP request that placed the order, travelled through the outbox row and the AMQP
+        // properties, and arrives here - so one query across both services returns the whole story
+        // of one order rather than two disconnected halves.
+        using var correlationScope = LogContext.PushProperty("CorrelationId", correlationId);
+        using var messageScope = LogContext.PushProperty("MessageId", messageId);
+        using var deliveryScope = LogContext.PushProperty("Redelivered", delivery.Redelivered);
 
         try
         {
