@@ -17,6 +17,9 @@ builder.AddStructuredLogging("OrderProcessing.Worker");
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddMessaging(builder.Configuration);
 
+builder.Services.AddOptions<FaultInjectionOptions>()
+    .Bind(builder.Configuration.GetSection(FaultInjectionOptions.SectionName));
+
 builder.Services.AddSingleton<IReceiptRenderer, ReceiptRenderer>();
 builder.Services.AddScoped<OrderPlacedHandler>();
 builder.Services.AddHostedService<OrderConsumer>();

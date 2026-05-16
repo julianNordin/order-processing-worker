@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OrderProcessing.Contracts;
 using OrderProcessing.Persistence;
 using OrderProcessing.Persistence.Entities;
@@ -40,10 +41,16 @@ public sealed class PermanentMessageFailureException : Exception
 internal sealed class OrderPlacedHandler(
     OrderProcessingDbContext database,
     IReceiptRenderer renderer,
+    IOptions<FaultInjectionOptions> faults,
     TimeProvider clock,
     ILogger<OrderPlacedHandler> logger)
 {
-    public async Task HandleAsync(ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
+    private readonly FaultInjectionOptions _faults = faults.Value;
+
+    /// <param name="body">The raw message body.</param>
+    /// <param name="attempt">Which delivery attempt this is, starting at 1.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    public async Task HandleAsync(ReadOnlyMemory<byte> body, int attempt, CancellationToken cancellationToken)
     {
         var message = Deserialize(body);
 
@@ -59,6 +66,8 @@ internal sealed class OrderPlacedHandler(
                 $"Schema version {message.SchemaVersion} is newer than this build understands " +
                 $"({MessageContracts.CurrentSchemaVersion}).");
         }
+
+        InjectConfiguredFault(message, attempt);
 
         var order = await database.Orders
             .FirstOrDefaultAsync(o => o.Id == message.OrderId, cancellationToken)
@@ -96,6 +105,32 @@ internal sealed class OrderPlacedHandler(
         await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         WorkerLog.ReceiptGenerated(logger, order.Id, pdf.Length);
+    }
+
+    /// <summary>
+    /// Fails on purpose, if configured to. Does nothing at all unless one of the fault options is
+    /// set, which is the case everywhere except a demonstration or a test.
+    /// </summary>
+    private void InjectConfiguredFault(OrderPlaced message, int attempt)
+    {
+        var permanent = _faults.FailPermanentlyForEmailContaining;
+        if (!string.IsNullOrEmpty(permanent) &&
+            message.CustomerEmail.Contains(permanent, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new PermanentMessageFailureException(
+                $"Fault injection: orders for '{permanent}' are configured to fail permanently.");
+        }
+
+        var transient = _faults.FailTransientlyForEmailContaining;
+        if (!string.IsNullOrEmpty(transient) &&
+            message.CustomerEmail.Contains(transient, StringComparison.OrdinalIgnoreCase) &&
+            (_faults.SucceedAfterAttempts <= 0 || attempt <= _faults.SucceedAfterAttempts))
+        {
+            // An ordinary exception, NOT PermanentMessageFailureException - so it goes round the
+            // backoff ladder exactly as a real transient failure would.
+            throw new InvalidOperationException(
+                $"Fault injection: attempt {attempt} for '{transient}' is configured to fail transiently.");
+        }
     }
 
     private static OrderPlaced Deserialize(ReadOnlyMemory<byte> body)
