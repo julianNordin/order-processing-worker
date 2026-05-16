@@ -42,8 +42,13 @@ public static class LoggingSetup
                 // Invariant culture, not the machine's. A developer in Stockholm and one in London
                 // reading the same log should see the same timestamps and numbers.
                 configuration.WriteTo.Console(
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} " +
-                                    "{#if CorrelationId is not null}<{CorrelationId}> {#end}{NewLine}{Exception}",
+                    // A plain output template renders a property that is absent as nothing, which
+                    // is exactly what is wanted here - startup lines carry no correlation id and
+                    // should not show an empty pair of brackets. Note that conditionals ({#if ...})
+                    // are Serilog.Expressions syntax and are NOT supported here: written in a plain
+                    // template they are emitted literally, which is a mistake that looks like a
+                    // logging bug rather than a template bug.
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {CorrelationId}{NewLine}{Exception}",
                     formatProvider: CultureInfo.InvariantCulture);
             }
             else
