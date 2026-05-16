@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using OrderProcessing.Contracts;
 using OrderProcessing.Messaging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -27,6 +28,7 @@ namespace OrderProcessing.Worker.Consuming;
 /// </summary>
 internal sealed class OrderConsumer(
     IRabbitMqConnection connection,
+    IMessagePublisher publisher,
     IServiceScopeFactory scopeFactory,
     IOptions<RabbitMqOptions> options,
     ILogger<OrderConsumer> logger) : BackgroundService
@@ -103,6 +105,7 @@ internal sealed class OrderConsumer(
 
         var messageId = delivery.BasicProperties.MessageId ?? "(none)";
         var correlationId = delivery.BasicProperties.CorrelationId ?? "(none)";
+        var previousAttempts = RetryDecision.ReadAttempt(delivery.BasicProperties.Headers);
 
         // Everything logged for the rest of this delivery carries these, including anything the
         // handler logs and anything an exception is reported with. The correlation id came from the
@@ -118,29 +121,96 @@ internal sealed class OrderConsumer(
             using var scope = scopeFactory.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<OrderPlacedHandler>();
 
-            await handler.HandleAsync(delivery.Body, CancellationToken.None).ConfigureAwait(false);
+            await handler.HandleAsync(delivery.Body, previousAttempts + 1, CancellationToken.None).ConfigureAwait(false);
             await channel.BasicAckAsync(delivery.DeliveryTag, multiple: false).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // Phase 08 parks anything that fails. The retry ladder and the reason headers that make
-            // a parked message diagnosable arrive in Phases 10 and 11; until then, requeue: false
-            // sends it to the queue's dead-letter exchange rather than looping it back immediately,
-            // which would spin the CPU on a message that fails instantly.
-            WorkerLog.MessageFailed(logger, ex, messageId);
+            var decision = RetryDecision.For(ex, previousAttempts);
 
             try
             {
-                await channel.BasicNackAsync(delivery.DeliveryTag, multiple: false, requeue: false)
-                    .ConfigureAwait(false);
+                await ApplyAsync(channel, delivery, decision, ex).ConfigureAwait(false);
             }
-            catch (Exception nackFailure)
+            catch (Exception routingFailure)
             {
-                // The channel has probably gone. The delivery will be redelivered when the
-                // connection recovers, which is the correct outcome - but it must be visible.
-                WorkerLog.NackFailed(logger, nackFailure, messageId);
+                // Could not even route the failure - the channel has probably gone. Leaving the
+                // delivery unacknowledged is the right outcome, because the broker redelivers it
+                // when the connection recovers. It has to be visible though: a message that quietly
+                // stops being processed looks exactly like a message that was never sent.
+                WorkerLog.FailureRoutingFailed(logger, routingFailure, messageId);
             }
         }
+    }
+
+    /// <summary>
+    /// Acts on a <see cref="RetryDecision"/>: send the message round the backoff ladder, or park it.
+    ///
+    /// A retry is a PUBLISH followed by an ACK of the original, not a nack. Nacking would dead-letter
+    /// the message immediately, with no way to delay it and no way to record which attempt this was.
+    /// Publishing a copy to the retry exchange lets the wait queue's TTL provide the delay and lets
+    /// the attempt counter travel with the message.
+    ///
+    /// The order matters. Publish first, then acknowledge: a crash in between means the original is
+    /// redelivered and the work happens twice, which is a duplicate and survivable. The other order
+    /// would mean a crash loses the message entirely, which is not.
+    /// </summary>
+    private async Task ApplyAsync(
+        IChannel channel,
+        BasicDeliverEventArgs delivery,
+        RetryDecision decision,
+        Exception failure)
+    {
+        var properties = delivery.BasicProperties;
+        var messageId = properties.MessageId ?? "(none)";
+
+        // The ORIGINAL message id is carried through, deliberately. It is the consumer's
+        // deduplication key, and a retry that invented a fresh id would look like a different
+        // message and defeat idempotency entirely.
+        var id = Guid.TryParse(properties.MessageId, out var parsed) ? parsed : Guid.CreateVersion7();
+        var correlationId = properties.CorrelationId ?? string.Empty;
+        var type = properties.Type ?? MessageContracts.OrderPlacedMessageType;
+
+        if (decision is { Action: FailureAction.Retry, Tier: not null })
+        {
+            WorkerLog.Retrying(logger, failure, messageId, decision.Attempt, decision.Tier.Delay);
+
+            await publisher.PublishAsync(
+                new OutboundMessage(
+                    MessageId: id,
+                    CorrelationId: correlationId,
+                    Type: type,
+                    Exchange: MessagingTopology.RetryExchange,
+                    RoutingKey: decision.Tier.RoutingKey,
+                    Body: delivery.Body,
+                    Headers: new Dictionary<string, object?>(StringComparer.Ordinal)
+                    {
+                        [MessagingTopology.AttemptHeader] = decision.Attempt,
+                    }),
+                CancellationToken.None).ConfigureAwait(false);
+        }
+        else
+        {
+            WorkerLog.Parking(logger, failure, messageId, decision.Attempt, decision.Reason);
+
+            await publisher.PublishAsync(
+                new OutboundMessage(
+                    MessageId: id,
+                    CorrelationId: correlationId,
+                    Type: type,
+                    Exchange: MessagingTopology.DeadLetterExchange,
+                    RoutingKey: string.Empty,
+                    Body: delivery.Body,
+                    Headers: new Dictionary<string, object?>(StringComparer.Ordinal)
+                    {
+                        [MessagingTopology.AttemptHeader] = decision.Attempt,
+                        [MessagingTopology.FailureReasonHeader] = decision.Reason,
+                        [MessagingTopology.OriginalRoutingKeyHeader] = delivery.RoutingKey,
+                    }),
+                CancellationToken.None).ConfigureAwait(false);
+        }
+
+        await channel.BasicAckAsync(delivery.DeliveryTag, multiple: false).ConfigureAwait(false);
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

@@ -18,11 +18,15 @@ internal static partial class WorkerLog
         Message = "Order {OrderId} is already completed; this delivery is a duplicate and is being acknowledged")]
     public static partial void AlreadyCompleted(ILogger logger, Guid orderId);
 
-    [LoggerMessage(EventId = 3004, Level = LogLevel.Error,
-        Message = "Message {MessageId} failed and is being dead-lettered")]
-    public static partial void MessageFailed(ILogger logger, Exception exception, string messageId);
+    [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
+        Message = "Message {MessageId} failed on attempt {Attempt}; retrying after {Delay}")]
+    public static partial void Retrying(ILogger logger, Exception exception, string messageId, int attempt, TimeSpan delay);
 
     [LoggerMessage(EventId = 3005, Level = LogLevel.Error,
-        Message = "Could not nack message {MessageId}; the channel has probably gone. It will be redelivered")]
-    public static partial void NackFailed(ILogger logger, Exception exception, string messageId);
+        Message = "Message {MessageId} parked after {Attempt} attempt(s): {Reason}")]
+    public static partial void Parking(ILogger logger, Exception exception, string messageId, int attempt, string reason);
+
+    [LoggerMessage(EventId = 3006, Level = LogLevel.Error,
+        Message = "Could not route the failure for message {MessageId}; it stays unacknowledged and will be redelivered")]
+    public static partial void FailureRoutingFailed(ILogger logger, Exception exception, string messageId);
 }
