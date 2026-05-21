@@ -116,3 +116,45 @@ Both were run rather than assumed:
 ```
 
 Note the attempt count on the parked poison message: **1**, not 3. It was never retried.
+
+Retry exhaustion was run in full rather than reasoned about, and the timings are the ladder exactly:
+
+```
+12:02:21 WRN  Message 01a0521e-... failed on attempt 1; retrying after 00:00:05
+12:02:26 WRN  Message 01a0521e-... failed on attempt 2; retrying after 00:00:30     (+5s)
+12:02:56 WRN  Message 01a0521e-... failed on attempt 3; retrying after 00:02:00     (+30s)
+12:04:56 ERR  Message 01a0521e-... parked after 4 attempts (3 retries)              (+2m)
+```
+
+Four deliveries, three retries, one correlation id throughout. A malformed body published straight to
+the `orders` exchange was parked in the same run after a single attempt.
+
+## Seeing what is parked
+
+The dead-letter queue is reported over HTTP, because one that can only be seen through the broker's
+management UI is one nobody empties:
+
+```bash
+curl -s localhost:8080/api/admin/dlq | jq
+{
+  "depth": 2,
+  "messages": [
+    { "attempts": 1, "failureReason": "Permanent failure, not retried: The message body is not a valid OrderPlaced: ..." },
+    { "attempts": 4, "failureReason": "Giving up after 4 attempts (3 retries). Last failure: InvalidOperationException: ..." }
+  ]
+}
+```
+
+`GET /api/admin/queues` reports the depth of every queue in the topology, which is how you tell a
+backlog from a stalled consumer.
+
+**Reading the queue puts everything back.** The inspector fetches without auto-acknowledgement and
+requeues in a `finally` with `CancellationToken.None`, so an abandoned request cannot drain the
+queue. This endpoint is a window, not a drain.
+
+## Proving the tests can fail
+
+An assertion that a poison message is *not* retried also passes when nothing is retried at all. So
+the rule was deliberately broken once — `if (false && exception is PermanentMessageFailureException)`
+— and exactly the three relevant tests went red, then green again when restored. A failure path is
+only tested if its test has been seen to fail.
