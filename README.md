@@ -146,7 +146,7 @@ dotnet test
 - [x] 08 — The worker: consume, render the receipt
 - [x] 09 — Serilog: structured logging and correlation
 - [x] 10 — Retry with exponential backoff
-- [ ] 11 — Dead-lettering, poison messages, and the parked queue
+- [x] 11 — Dead-lettering, poison messages, and the parked queue
 - [ ] 12 — Idempotency: exactly-once effects on at-least-once delivery
 - [ ] 13 — Resilience: recovery, shutdown, backpressure, health
 - [ ] 14 — Integration tests with Testcontainers
