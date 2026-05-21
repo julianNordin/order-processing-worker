@@ -1,3 +1,4 @@
+using OrderProcessing.Api.Admin;
 using OrderProcessing.Api.Orders;
 using OrderProcessing.Api.Outbox;
 using OrderProcessing.Messaging;
@@ -28,5 +29,6 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 app.MapOrderEndpoints();
+app.MapAdminEndpoints();
 
 await app.RunAsync();
