@@ -51,6 +51,9 @@ public class RetryDecisionTests
         Assert.Equal(FailureAction.Park, decision.Action);
         Assert.Null(decision.Tier);
         Assert.Contains("Giving up", decision.Reason, StringComparison.Ordinal);
+        // The number in the reason must match the x-attempt header on the parked message, or an
+        // operator comparing the two sees a contradiction.
+        Assert.Contains($"after {decision.Attempt} attempts", decision.Reason, StringComparison.Ordinal);
         // The reason has to name the underlying failure, or the parked message says only that it
         // was retried - not what went wrong.
         Assert.Contains("the database blinked", decision.Reason, StringComparison.Ordinal);

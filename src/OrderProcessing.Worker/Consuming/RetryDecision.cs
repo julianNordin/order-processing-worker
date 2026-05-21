@@ -56,10 +56,14 @@ public sealed record RetryDecision(FailureAction Action, RetryTier? Tier, int At
 
         if (tier is null)
         {
+            // Says "attempt", matching the x-attempt header on the parked message. Reporting the
+            // number of RETRIES here instead reads as a contradiction next to that header - the
+            // message was delivered four times and retried three, and an operator comparing the two
+            // numbers should not have to work that out.
             return new RetryDecision(
                 FailureAction.Park, Tier: null, attempt,
-                $"Giving up after {MessagingTopology.MaxAttempts} attempts. Last failure: " +
-                $"{exception.GetType().Name}: {exception.Message}");
+                $"Giving up after {attempt} attempts ({MessagingTopology.MaxAttempts} retries). " +
+                $"Last failure: {exception.GetType().Name}: {exception.Message}");
         }
 
         return new RetryDecision(
