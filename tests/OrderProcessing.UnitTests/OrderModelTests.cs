@@ -89,6 +89,31 @@ public class OrderModelTests
     }
 
     [Fact]
+    public void The_message_id_is_the_primary_key_of_the_inbox()
+    {
+        // The entire idempotency mechanism is this constraint. A table keyed on anything else -
+        // or on nothing - would let two concurrent deliveries of the same message both succeed,
+        // and a "have I seen this?" query cannot close that race because both would read nothing.
+        var inbox = Model.FindEntityType(typeof(ProcessedMessage))!;
+        var key = inbox.FindPrimaryKey()!;
+
+        Assert.Equal(nameof(ProcessedMessage.MessageId), Assert.Single(key.Properties).Name);
+        Assert.Equal(ValueGenerated.Never, key.Properties[0].ValueGenerated);
+    }
+
+    [Fact]
+    public void The_outbox_message_id_is_unique()
+    {
+        // Same reasoning at the other end of the pipe: a bug that enqueued one message twice should
+        // fail at the database rather than produce two deliveries for the consumer to deduplicate.
+        var outbox = Model.FindEntityType(typeof(OutboxMessage))!;
+
+        Assert.Contains(outbox.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Count == 1 &&
+            index.Properties[0].Name == nameof(OutboxMessage.MessageId));
+    }
+
+    [Fact]
     public void Deleting_an_order_takes_its_lines_with_it()
     {
         var foreignKey = Model.FindEntityType(typeof(OrderLine))!.GetForeignKeys().Single();
