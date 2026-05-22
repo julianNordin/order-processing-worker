@@ -18,6 +18,10 @@ internal static partial class WorkerLog
         Message = "Order {OrderId} is already completed; this delivery is a duplicate and is being acknowledged")]
     public static partial void AlreadyCompleted(ILogger logger, Guid orderId);
 
+    [LoggerMessage(EventId = 3007, Level = LogLevel.Information,
+        Message = "Message {MessageId} for order {OrderId} was already processed; ignoring the duplicate")]
+    public static partial void DuplicateIgnored(ILogger logger, Guid messageId, Guid orderId);
+
     [LoggerMessage(EventId = 3004, Level = LogLevel.Warning,
         Message = "Message {MessageId} failed on attempt {Attempt}; retrying after {Delay}")]
     public static partial void Retrying(ILogger logger, Exception exception, string messageId, int attempt, TimeSpan delay);

@@ -121,7 +121,11 @@ internal sealed class OrderConsumer(
             using var scope = scopeFactory.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<OrderPlacedHandler>();
 
-            await handler.HandleAsync(delivery.Body, previousAttempts + 1, CancellationToken.None).ConfigureAwait(false);
+            await handler.HandleAsync(
+                Guid.TryParse(delivery.BasicProperties.MessageId, out var id) ? id : Guid.CreateVersion7(),
+                delivery.Body,
+                previousAttempts + 1,
+                CancellationToken.None).ConfigureAwait(false);
             await channel.BasicAckAsync(delivery.DeliveryTag, multiple: false).ConfigureAwait(false);
         }
         catch (Exception ex)
