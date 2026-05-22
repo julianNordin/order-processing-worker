@@ -22,6 +22,8 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
 
     public DbSet<Receipt> Receipts => Set<Receipt>();
 
+    public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -55,6 +57,14 @@ public class OrderProcessingDbContext(DbContextOptions<OrderProcessingDbContext>
             // The API lists recent orders and the worker looks orders up by state. Both want this.
             order.HasIndex(o => o.Status);
             order.HasIndex(o => o.PlacedAt);
+        });
+
+        modelBuilder.Entity<ProcessedMessage>(processed =>
+        {
+            // The primary key IS the deduplication. A second insert of the same message id raises
+            // 23505, and the consumer reads that as "already done" rather than as a failure.
+            processed.HasKey(m => m.MessageId);
+            processed.Property(m => m.MessageId).ValueGeneratedNever();
         });
 
         modelBuilder.Entity<Receipt>(receipt =>
