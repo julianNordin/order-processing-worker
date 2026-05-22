@@ -147,7 +147,7 @@ dotnet test
 - [x] 09 — Serilog: structured logging and correlation
 - [x] 10 — Retry with exponential backoff
 - [x] 11 — Dead-lettering, poison messages, and the parked queue
-- [ ] 12 — Idempotency: exactly-once effects on at-least-once delivery
+- [x] 12 — Idempotency: exactly-once effects on at-least-once delivery
 - [ ] 13 — Resilience: recovery, shutdown, backpressure, health
 - [ ] 14 — Integration tests with Testcontainers
 - [ ] 15 — Containerise the whole stack
