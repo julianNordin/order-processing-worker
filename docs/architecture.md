@@ -78,6 +78,38 @@ die between the confirm and the commit, and the row is then republished. That is
 losing a message is unacceptable, sending one twice is inconvenient. It is also the reason the
 consumer must be idempotent, which is Phase 12.
 
+## Idempotency: exactly-once effects on at-least-once delivery
+
+The broker offers at-least-once delivery and nothing stronger. This system adds two more sources of
+duplicates of its own, both deliberate:
+
+- the outbox publisher can die between the broker's confirm and its own commit, so the row is still
+  unsent and gets published again;
+- the consumer publishes a retry copy *before* acknowledging the original, so a crash in between
+  means the original is redelivered too.
+
+Each of those chose "possibly twice" over "possibly never", which is the right way round. What is
+left is to make sure a message arriving twice does not produce two receipts — and the thing made
+idempotent is the **effect**, not the delivery.
+
+`processed_messages` is keyed on the AMQP message id, and the row is written **in the same
+transaction** as the receipt and the status change. A second delivery raises Postgres `23505`, which
+the consumer reads as "already done", logs once, and acknowledges. It is not a failure: the effect
+the message asked for has happened exactly once.
+
+**It has to be the database.** A "have I seen this message?" query before doing the work cannot close
+the race — two concurrent deliveries would both find nothing and both proceed. A unique constraint is
+the only thing that can adjudicate between two transactions arriving at once.
+
+The `Status == Completed` check in the handler is a cheap short-circuit that avoids rendering a PDF
+destined for the bin. It is an optimisation, not the mechanism, and the code says so.
+
+**Proven both ways.** Republishing an identical message is absorbed by the short-circuit. To exercise
+the constraint itself, the order was reset to `Accepted` and its receipt deleted while the inbox row
+was left in place: the handler then re-rendered, hit `23505` on save, logged
+`was already processed`, and produced **no second receipt**. The message was acknowledged, not
+dead-lettered — the dead-letter queue did not grow.
+
 ## What is not here yet
 
 The message flow, the retry topology and the dead-letter path arrive in later phases and are
