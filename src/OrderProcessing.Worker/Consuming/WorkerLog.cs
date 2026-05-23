@@ -18,6 +18,18 @@ internal static partial class WorkerLog
         Message = "Order {OrderId} is already completed; this delivery is a duplicate and is being acknowledged")]
     public static partial void AlreadyCompleted(ILogger logger, Guid orderId);
 
+    [LoggerMessage(EventId = 3008, Level = LogLevel.Information,
+        Message = "Stopped consuming (tag {ConsumerTag}); waiting for work already in hand")]
+    public static partial void ConsumerCancelled(ILogger logger, string consumerTag);
+
+    [LoggerMessage(EventId = 3009, Level = LogLevel.Warning,
+        Message = "Could not cancel the consumer; nothing further will arrive regardless")]
+    public static partial void ConsumerCancelFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 3010, Level = LogLevel.Information,
+        Message = "Drain finished with {Abandoned} message(s) still in flight; those are redelivered")]
+    public static partial void Drained(ILogger logger, int abandoned);
+
     [LoggerMessage(EventId = 3007, Level = LogLevel.Information,
         Message = "Message {MessageId} for order {OrderId} was already processed; ignoring the duplicate")]
     public static partial void DuplicateIgnored(ILogger logger, Guid messageId, Guid orderId);

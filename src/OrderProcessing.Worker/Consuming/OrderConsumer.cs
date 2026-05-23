@@ -35,6 +35,12 @@ internal sealed class OrderConsumer(
 {
     private readonly RabbitMqOptions _options = options.Value;
     private IChannel? _channel;
+    private string? _consumerTag;
+
+    /// <summary>
+    /// How many deliveries are being handled right now. Shutdown waits on this reaching zero.
+    /// </summary>
+    private int _inFlight;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -83,13 +89,13 @@ internal sealed class OrderConsumer(
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += OnReceivedAsync;
 
-        var tag = await _channel.BasicConsumeAsync(
+        _consumerTag = await _channel.BasicConsumeAsync(
             queue: MessagingTopology.OrdersPlacedQueue,
             autoAck: false,
             consumer: consumer,
             cancellationToken: stoppingToken).ConfigureAwait(false);
 
-        WorkerLog.ConsumerStarted(logger, MessagingTopology.OrdersPlacedQueue, _options.PrefetchCount, tag);
+        WorkerLog.ConsumerStarted(logger, MessagingTopology.OrdersPlacedQueue, _options.PrefetchCount, _consumerTag);
 
         // Nothing more to do on this thread; deliveries arrive on the client's own dispatcher.
         await Task.Delay(Timeout.Infinite, stoppingToken).ConfigureAwait(false);
@@ -115,6 +121,8 @@ internal sealed class OrderConsumer(
         using var correlationScope = LogContext.PushProperty("CorrelationId", correlationId);
         using var messageScope = LogContext.PushProperty("MessageId", messageId);
         using var deliveryScope = LogContext.PushProperty("Redelivered", delivery.Redelivered);
+
+        Interlocked.Increment(ref _inFlight);
 
         try
         {
@@ -144,6 +152,10 @@ internal sealed class OrderConsumer(
                 // stops being processed looks exactly like a message that was never sent.
                 WorkerLog.FailureRoutingFailed(logger, routingFailure, messageId);
             }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _inFlight);
         }
     }
 
@@ -217,13 +229,63 @@ internal sealed class OrderConsumer(
         await channel.BasicAckAsync(delivery.DeliveryTag, multiple: false).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Stops consuming, then waits for work already in hand to finish before closing the channel.
+    ///
+    /// The order is the whole point. Cancelling the consumer first tells the broker to send nothing
+    /// more, so the set of in-flight messages stops growing and becomes finite. Only then is it
+    /// worth waiting for.
+    ///
+    /// Closing the channel immediately instead - which is what happens if you do nothing - drops
+    /// every unacknowledged delivery. Those messages are not lost: the broker redelivers them,
+    /// because they were never acknowledged. But the work done on them is thrown away, and any that
+    /// had already been half-processed get processed again. Draining turns a routine deployment from
+    /// "a burst of duplicate work" into "nothing happened".
+    ///
+    /// The wait is bounded. A handler that never returns must not stop the process from exiting -
+    /// the orchestrator will kill it anyway, less politely.
+    /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
+        var channel = _channel;
+
+        if (channel is not null && _consumerTag is not null && channel.IsOpen)
+        {
+            try
+            {
+                await channel.BasicCancelAsync(_consumerTag, noWait: false, cancellationToken).ConfigureAwait(false);
+                WorkerLog.ConsumerCancelled(logger, _consumerTag);
+            }
+            catch (Exception ex)
+            {
+                // Already gone, most likely. Nothing more will arrive either way.
+                WorkerLog.ConsumerCancelFailed(logger, ex);
+            }
+        }
+
+        var deadline = DateTimeOffset.UtcNow + _options.ShutdownDrainTimeout;
+        var waited = false;
+
+        while (Volatile.Read(ref _inFlight) > 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            waited = true;
+            await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None).ConfigureAwait(false);
+        }
+
+        var abandoned = Volatile.Read(ref _inFlight);
+
+        if (waited || abandoned > 0)
+        {
+            // Anything still running is abandoned unacknowledged, so the broker redelivers it. That
+            // is correct and it is why the consumer has to be idempotent.
+            WorkerLog.Drained(logger, abandoned);
+        }
+
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
 
         if (_channel is not null)
         {
-            await _channel.CloseAsync(cancellationToken).ConfigureAwait(false);
+            await _channel.CloseAsync(CancellationToken.None).ConfigureAwait(false);
             await _channel.DisposeAsync().ConfigureAwait(false);
             _channel = null;
         }

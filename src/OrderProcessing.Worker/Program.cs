@@ -20,13 +20,17 @@ builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddOptions<FaultInjectionOptions>()
     .Bind(builder.Configuration.GetSection(FaultInjectionOptions.SectionName));
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<OrderProcessingDbContext>("database", tags: [HealthEndpoints.ReadinessTag])
+    .AddBrokerCheck();
+
 builder.Services.AddSingleton<IReceiptRenderer, ReceiptRenderer>();
 builder.Services.AddScoped<OrderPlacedHandler>();
 builder.Services.AddHostedService<OrderConsumer>();
 
 var app = builder.Build();
 
-// The worker consumes; the health endpoints it will actually need arrive in Phase 13.
 app.MapGet("/", () => Results.Ok(new { service = "OrderProcessing.Worker" }));
+app.MapHealthEndpoints();
 
 await app.RunAsync();
