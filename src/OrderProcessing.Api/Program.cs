@@ -17,6 +17,11 @@ builder.Services.AddOutboxPublisher(builder.Configuration);
 // Every failure this API produces is a problem+json document, including the ones it did not write
 // itself - an unhandled exception would otherwise leak a stack trace in Development and an empty
 // body in Production, and neither is something a client can act on.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<OrderProcessingDbContext>("database", tags: [HealthEndpoints.ReadinessTag])
+    .AddBrokerCheck()
+    .AddCheck<OutboxBacklogHealthCheck>("outbox", tags: [HealthEndpoints.ReadinessTag]);
+
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -30,5 +35,6 @@ app.UseStatusCodePages();
 
 app.MapOrderEndpoints();
 app.MapAdminEndpoints();
+app.MapHealthEndpoints();
 
 await app.RunAsync();

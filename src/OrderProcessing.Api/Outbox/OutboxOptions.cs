@@ -39,4 +39,14 @@ public sealed class OutboxOptions
     /// for; it does not need to happen inside a transaction as well.
     /// </summary>
     public TimeSpan PublishTimeout { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// How many unpublished rows before readiness reports Degraded.
+    ///
+    /// A short queue is normal - the publisher polls, so there is always a little in flight. A
+    /// growing one means the broker is unreachable or the publisher has stopped, and that is worth
+    /// knowing before receipts start visibly lagging.
+    /// </summary>
+    [Range(1, 1_000_000)]
+    public int BacklogWarningThreshold { get; set; } = 100;
 }
