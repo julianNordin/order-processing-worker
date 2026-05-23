@@ -44,6 +44,15 @@ public sealed class RabbitMqOptions
     public TimeSpan ConnectionRetryTimeout { get; set; } = TimeSpan.FromMinutes(2);
 
     /// <summary>
+    /// How long shutdown waits for in-flight messages to finish before abandoning them.
+    ///
+    /// Bounded on purpose. A handler that never returns must not stop the process exiting - the
+    /// orchestrator will kill it shortly afterwards anyway, and less politely. Anything abandoned is
+    /// redelivered by the broker because it was never acknowledged.
+    /// </summary>
+    public TimeSpan ShutdownDrainTimeout { get; set; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
     /// Name this connection reports to the broker. It shows in the management UI's connection list,
     /// which is the difference between diagnosing a stuck consumer in seconds and guessing.
     /// </summary>
