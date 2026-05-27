@@ -149,7 +149,7 @@ dotnet test
 - [x] 11 — Dead-lettering, poison messages, and the parked queue
 - [x] 12 — Idempotency: exactly-once effects on at-least-once delivery
 - [x] 13 — Resilience: recovery, shutdown, backpressure, health
-- [ ] 14 — Integration tests with Testcontainers
+- [x] 14 — Integration tests with Testcontainers
 - [ ] 15 — Containerise the whole stack
 - [ ] 16 — CI, docs, fault injection, ship
 
