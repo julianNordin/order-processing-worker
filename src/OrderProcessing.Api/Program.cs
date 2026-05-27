@@ -38,3 +38,18 @@ app.MapAdminEndpoints();
 app.MapHealthEndpoints();
 
 await app.RunAsync();
+
+namespace OrderProcessing.Api
+{
+    /// <summary>
+    /// Named so that WebApplicationFactory can find the entry point.
+    ///
+    /// A program written with top-level statements compiles to an INTERNAL Program class, which the
+    /// test host cannot reach. Declaring the partial here is the documented way round it, and is
+    /// narrower than making the whole assembly visible to the test project.
+    ///
+    /// It is namespaced because both services would otherwise contribute a type called Program, and
+    /// a test project referencing both cannot then say which one it means.
+    /// </summary>
+    public partial class Program;
+}
