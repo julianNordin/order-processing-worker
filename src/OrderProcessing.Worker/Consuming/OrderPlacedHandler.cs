@@ -161,6 +161,14 @@ internal sealed class OrderPlacedHandler(
                 $"Fault injection: orders for '{permanent}' are configured to fail permanently.");
         }
 
+        var always = _faults.AlwaysFailTransientlyForEmailContaining;
+        if (!string.IsNullOrEmpty(always) &&
+            message.CustomerEmail.Contains(always, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Fault injection: attempt {attempt} for '{always}' is configured to always fail transiently.");
+        }
+
         var transient = _faults.FailTransientlyForEmailContaining;
         if (!string.IsNullOrEmpty(transient) &&
             message.CustomerEmail.Contains(transient, StringComparison.OrdinalIgnoreCase) &&
