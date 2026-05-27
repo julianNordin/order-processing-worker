@@ -15,6 +15,14 @@
     -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
 
+    <!--
+      CA1001 wants a type owning disposable fields to be IDisposable. An xUnit fixture's lifetime is
+      owned by xUnit through IAsyncLifetime, which is asynchronous by necessity here - stopping two
+      containers is IO - and adding a synchronous Dispose beside it would give the framework two ways
+      to tear the same thing down.
+    -->
+    <NoWarn>$(NoWarn);CA1001</NoWarn>
+
     <!-- Nothing here ships, so there is no public API to document. -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>

@@ -21,6 +21,31 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\OrderProcessing.Api\OrderProcessing.Api.csproj" />
     <ProjectReference Include="..\..\src\OrderProcessing.Worker\OrderProcessing.Worker.csproj" />
+    <ProjectReference Include="..\..\src\OrderProcessing.Persistence\OrderProcessing.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\OrderProcessing.Messaging\OrderProcessing.Messaging.csproj" />
   </ItemGroup>
 
+
+  <PropertyGroup>
+    <!--
+      Audit only the packages this project actually chooses, not what its test harness drags in.
+
+      Testcontainers depends transitively on SSH.NET 2025.1.0, which carries a known high-severity
+      advisory (NU1903), and there is NO fixed SSH.NET published inside this project's window - the
+      newest available is the vulnerable one, so pinning forward is not an option. With
+      TreatWarningsAsErrors that warning is a BUILD ERROR, and this project would not compile.
+
+      NuGetAuditMode=direct rather than NoWarn=NU1903 deliberately: it keeps auditing everything this
+      project references directly, so if SSH.NET ever became a real dependency the advisory would be
+      raised again. Verified not to be too broad - with SSH.NET as a direct reference the audit still
+      fires. The dependency reaches only the test harness and ships in neither service's image.
+    -->
+    <NuGetAuditMode>direct</NuGetAuditMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.RabbitMq" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
 </Project>
