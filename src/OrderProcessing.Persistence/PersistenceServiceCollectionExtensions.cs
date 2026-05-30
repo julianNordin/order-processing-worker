@@ -24,6 +24,13 @@ public static class PersistenceServiceCollectionExtensions
             // in every hand-written query - which is exactly the query you write during an incident.
             .UseSnakeCaseNamingConvention());
 
+        // Opt-in, so a deployed system can keep schema changes as a deliberate step while
+        // `docker compose up` still produces something that works from nothing.
+        if (bool.TryParse(configuration["Database:MigrateOnStartup"], out var migrateOnStartup) && migrateOnStartup)
+        {
+            services.AddHostedService<DatabaseMigrator>();
+        }
+
         // Injected rather than calling DateTimeOffset.UtcNow at the point of use, so that time is a
         // dependency the tests can control instead of an ambient fact they have to tolerate.
         services.TryAddSingletonTimeProvider();
