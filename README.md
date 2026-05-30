@@ -53,22 +53,17 @@ dead-lettering are things this code does explicitly, not things a library hides.
 
 ## Running it
 
-Requires Docker and the .NET 10 SDK. The whole stack moves into Compose in Phase 15; until then the
-broker and database run in containers and the services run on the host.
+Requires Docker. Nothing else.
 
 ```bash
 cp .env.example .env
-docker compose up -d                 # rabbitmq + postgres, ~10s to healthy
-
-# Credentials come from the environment and are never committed.
-export ConnectionStrings__OrderProcessing="Host=localhost;Port=5432;Database=orderprocessing;Username=orderprocessing;Password=local-development-only"
-export RabbitMq__UserName=orderprocessing
-export RabbitMq__Password=local-development-only
-
-dotnet tool restore                  # pinned dotnet-ef
-dotnet dotnet-ef database update --project src/OrderProcessing.Persistence
-dotnet run --project src/OrderProcessing.Api      # http://127.0.0.1:8080
+docker compose up -d --build
 ```
+
+Four containers: the broker, Postgres, the API on `:8080` and the worker on `:8081`. The API applies
+the migrations on startup, so this works from an empty volume — verified by
+`docker compose down -v && docker compose up -d`, which reaches four healthy containers and a created
+schema in about ten seconds.
 
 Place an order:
 
@@ -81,13 +76,22 @@ It answers `202 Accepted` with a `Location` header, **not** `201`. The order has
 receipt has not been generated yet, and saying `201` would claim otherwise. Follow the `Location` to
 watch the status change.
 
-Run the worker too, in another shell, and the order completes:
+### Running the services on the host instead
+
+Useful while developing. Start only the infrastructure, then run the two services yourself:
 
 ```bash
-dotnet run --project src/OrderProcessing.Worker    # http://127.0.0.1:8081
+docker compose up -d rabbitmq postgres
+export ConnectionStrings__OrderProcessing="Host=localhost;Port=5432;Database=orderprocessing;Username=orderprocessing;Password=local-development-only"
+export RabbitMq__UserName=orderprocessing
+export RabbitMq__Password=local-development-only
+dotnet tool restore
+dotnet dotnet-ef database update --project src/OrderProcessing.Persistence
+dotnet run --project src/OrderProcessing.Api      # :8080
+dotnet run --project src/OrderProcessing.Worker   # :8081, in another shell
 ```
 
-Then the whole pipeline in one command:
+The whole pipeline in one command:
 
 ```bash
 pwsh -File scripts/smoke.ps1
@@ -150,7 +154,7 @@ dotnet test
 - [x] 12 — Idempotency: exactly-once effects on at-least-once delivery
 - [x] 13 — Resilience: recovery, shutdown, backpressure, health
 - [x] 14 — Integration tests with Testcontainers
-- [ ] 15 — Containerise the whole stack
+- [x] 15 — Containerise the whole stack
 - [ ] 16 — CI, docs, fault injection, ship
 
 ## Licence

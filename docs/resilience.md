@@ -73,9 +73,19 @@ The wait is bounded by `RabbitMq:ShutdownDrainTimeout` (15s). A handler that nev
 stop the process exiting; the orchestrator will kill it shortly afterwards anyway, less politely.
 Anything abandoned is redelivered, which is why the consumer has to be idempotent.
 
-**Not yet proven under a real signal.** On Windows, `Stop-Process` is a hard terminate that bypasses
-the graceful path entirely, so the drain never runs. The honest place to demonstrate it is Phase 15,
-where `docker stop` sends `SIGTERM` and .NET runs shutdown properly.
+**Proven under a real signal.** `Stop-Process` on Windows is a hard terminate that bypasses the
+graceful path entirely, so this could only be demonstrated once the worker ran in a container. With
+150 orders in flight, `docker stop orderprocessing-worker`:
+
+```
+Consuming orders.placed with prefetch 10 (consumer tag amq.ctag-QAvy1-...)
+Stopped consuming (tag amq.ctag-QAvy1-...); waiting for work already in hand
+Drain finished with 0 message(s) still in flight; those are redelivered
+```
+
+Zero abandoned: it cancelled the consumer, finished what it held, and exited. Note that
+`stop_grace_period: 30s` in the compose file exists for this — Docker's default is 10s, and the
+drain is bounded at 15s, so the default would have cut it short and made the drain pointless.
 
 ## Prefetch
 
