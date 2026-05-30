@@ -58,6 +58,68 @@ services:
       retries: 12
       start_period: 10s
 
+  api:
+    build:
+      context: .
+      dockerfile: src/OrderProcessing.Api/Dockerfile
+    container_name: orderprocessing-api
+    environment:
+      # Every secret arrives from the environment. Nothing here is committed - the values come from
+      # .env, which is gitignored, and in a deployed system they would come from a secret store.
+      ConnectionStrings__OrderProcessing: "Host=postgres;Port=5432;Database=orderprocessing;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__UserName: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Production
+      # Only the API migrates. Two services racing to apply the same migration is avoidable noise,
+      # and one of them has to go first anyway.
+      Database__MigrateOnStartup: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      # service_healthy, not service_started. Compose considers a container "started" the moment the
+      # process exists, which for Postgres and RabbitMQ is many seconds before either accepts a
+      # connection. Both services would survive that gap on their own - they retry - but the retries
+      # would be the first thing anyone saw in the logs of a fresh `up`.
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/OrderProcessing.Worker/Dockerfile
+    container_name: orderprocessing-worker
+    environment:
+      ConnectionStrings__OrderProcessing: "Host=postgres;Port=5432;Database=orderprocessing;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__UserName: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Production
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    # Long enough for the drain in StopAsync to finish before Docker escalates SIGTERM to SIGKILL.
+    # The default is 10s; the drain is bounded at 15s, so the default would cut it short.
+    stop_grace_period: 30s
+
 volumes:
   rabbitmq-data:
   postgres-data:
