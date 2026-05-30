@@ -1,0 +1,15 @@
+# Everything the build does not need. Two reasons this matters more than it looks: the whole context
+# is sent to the daemon before the build starts, and a stale bin/ or obj/ from a host build can be
+# copied over the container's own output and produce a binary nobody can account for.
+**/bin/
+**/obj/
+**/TestResults/
+**/coverage/
+.git/
+.github/
+.vs/
+.idea/
+.env
+*.user
+docs/
+scripts/

@@ -1,6 +1,14 @@
 {
   "sdk": {
-    "version": "10.0.203",
+    "_comment": [
+      "Pinned to the 10.0.2xx feature band rather than to an exact patch.",
+      "The .NET SDK container images are published per feature band - 10.0.100, 10.0.200, 10.0.400 -",
+      "and there is no 10.0.203 tag to build against. Pinning the exact patch therefore builds on a",
+      "developer machine and fails inside Docker with 'A compatible .NET SDK was not found', which is",
+      "a confusing way to learn this.",
+      "latestPatch keeps the band fixed, so a build never silently moves to 10.0.4xx."
+    ],
+    "version": "10.0.200",
     "rollForward": "latestPatch"
   }
 }
