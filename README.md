@@ -190,7 +190,7 @@ In code, the three files that carry the design are
 - [x] 13 — Resilience: recovery, shutdown, backpressure, health
 - [x] 14 — Integration tests with Testcontainers
 - [x] 15 — Containerise the whole stack
-- [ ] 16 — CI, docs, fault injection, ship
+- [x] 16 — CI, docs, fault injection, ship
 
 ## Licence
 
