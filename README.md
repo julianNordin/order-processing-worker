@@ -138,6 +138,41 @@ allocation.
 dotnet test
 ```
 
+## What to read
+
+The domain is thin on purpose. What is worth reading is the messaging:
+
+| If you want to see | Read |
+|---|---|
+| Why the API never publishes inside a request | [`docs/architecture.md`](docs/architecture.md) — the outbox, and the dual write it removes |
+| The exchanges, queues and bindings, and why they are shaped that way | [`docs/topology.md`](docs/topology.md) |
+| How a failure is classified and what happens next | [`docs/retry-and-dlq.md`](docs/retry-and-dlq.md) |
+| What survives a broker restart, and what liveness must not check | [`docs/resilience.md`](docs/resilience.md) |
+| What was deliberately broken, and what broke | [`docs/fault-injection.md`](docs/fault-injection.md) |
+
+In code, the three files that carry the design are
+[`MessagingTopology`](src/OrderProcessing.Messaging/MessagingTopology.cs),
+[`OutboxPublisher`](src/OrderProcessing.Api/Outbox/OutboxPublisher.cs) and
+[`OrderConsumer`](src/OrderProcessing.Worker/Consuming/OrderConsumer.cs).
+
+## Decisions worth defending
+
+- **`202`, not `201`.** The order is recorded; the receipt is not generated yet. `201` would claim
+  otherwise.
+- **The raw RabbitMQ client, not a framework.** Exchanges, bindings, prefetch, acknowledgement and
+  dead-lettering are things this code does explicitly. A framework would hide exactly the parts the
+  project exists to show.
+- **`mandatory: true` on every publish.** RabbitMQ discards an unroutable message *silently*. This
+  turns the most common way a messaging system loses data into an exception.
+- **Three retry queues, not one with per-message TTL.** RabbitMQ expires messages only at the head of
+  a queue, so one queue would make every delay the delay of whatever is in front of it.
+- **The consumer publishes to the dead-letter exchange rather than nacking.** A nack cannot carry a
+  reason, and a parked message you cannot explain is nearly useless.
+- **Idempotency is enforced by a unique index, not a lookup.** Two concurrent deliveries would both
+  find nothing and both proceed; only the database can adjudicate that race.
+- **Liveness checks nothing external.** A liveness probe that fails during a database outage gets
+  every healthy replica killed at the worst possible moment.
+
 ## Roadmap
 
 - [x] 01 — Repo skeleton, tooling, ground rules
