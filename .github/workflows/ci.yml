@@ -57,7 +57,15 @@ jobs:
 
     strategy:
       matrix:
-        service: [Api, Worker]
+        # Two values per service, not one. The project name is PascalCase because that is what the
+        # directory and the assembly are called; the image tag has to be lowercase because Docker
+        # rejects an uppercase repository name outright. Deriving one from the other is not possible
+        # here - Actions expressions have no lowercase function - so both are stated.
+        include:
+          - service: Api
+            image: orderprocessing-api
+          - service: Worker
+            image: orderprocessing-worker
 
     steps:
       - uses: actions/checkout@v6
@@ -74,13 +82,13 @@ jobs:
           # Dockerfile still works, which is the thing that actually rots.
           push: false
           load: true
-          tags: orderprocessing-${{ matrix.service }}:ci
+          tags: ${{ matrix.image }}:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Check it runs as a non-root user
         run: |
-          user=$(docker run --rm --entrypoint sh orderprocessing-${{ matrix.service }}:ci -c 'id -un')
+          user=$(docker run --rm --entrypoint sh ${{ matrix.image }}:ci -c 'id -un')
           echo "image runs as: $user"
           if [ "$user" = "root" ]; then
             echo "::error::The image runs as root."
