@@ -1,5 +1,7 @@
 # OrderProcessing
 
+[![CI](https://github.com/julianNordin/order-processing-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/julianNordin/order-processing-worker/actions/workflows/ci.yml)
+
 An order pipeline built around RabbitMQ. An ASP.NET Core API accepts an order and answers
 immediately; a separate .NET worker service picks the order up off a queue, renders a receipt, and
 stores it. The two halves never call each other.
