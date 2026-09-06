@@ -196,4 +196,4 @@ In code, the three files that carry the design are
 
 ## Licence
 
-UNLICENSED — portfolio project.
+MIT — see [`LICENSE`](LICENSE).
