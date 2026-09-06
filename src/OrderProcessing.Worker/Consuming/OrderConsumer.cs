@@ -285,8 +285,18 @@ internal sealed class OrderConsumer(
 
         if (_channel is not null)
         {
-            await _channel.CloseAsync(CancellationToken.None).ConfigureAwait(false);
-            await _channel.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await _channel.CloseAsync(CancellationToken.None).ConfigureAwait(false);
+                await _channel.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Same reasoning as the cancel above: the channel or its underlying connection may
+                // already be gone by the time shutdown gets here.
+                WorkerLog.ChannelCloseFailed(logger, ex);
+            }
+
             _channel = null;
         }
     }
